@@ -12,6 +12,11 @@ package org.eclipse.sisu.equinox.embedder.internal;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
@@ -191,6 +196,42 @@ public class DefaultEquinoxEmbedder extends AbstractLogEnabled
         if (!(equinoxTmp.delete() && equinoxTmp.mkdirs())) {
             throw new IOException("Could not create temp dir " + equinoxTmp);
         }
+
+        final Path directory = equinoxTmp.toPath();
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+			
+                @Override
+                public void run() {
+                Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        Files.delete(file);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                        Files.delete(dir);
+                        return FileVisitResult.CONTINUE;
+                    }
+                 });
+                }
+        }));
+
+        Path directory = Paths.get("/tmp");
+        Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+           @Override
+           public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+               Files.delete(file);
+               return FileVisitResult.CONTINUE;
+           }
+
+           @Override
+           public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+               Files.delete(dir);
+               return FileVisitResult.CONTINUE;
+           }
+        });
         File tempConfigDir = new File(equinoxTmp, "config");
         if (!(tempConfigDir.mkdirs())) {
             throw new IOException("Could not create temp config dir " + tempConfigDir);
